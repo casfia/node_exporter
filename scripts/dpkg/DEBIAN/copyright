@@ -1,0 +1,6 @@
+Upstream-Name: prometheus
+Source: https://github.com/prometheus/node_exporter
+
+Files: *
+Copyright: Copyright (C) 2017  clean slate (www.cleanslate.com; www.github.com/asnowfox)
+License: Apache-2.0

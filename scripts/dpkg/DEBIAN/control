@@ -1,0 +1,13 @@
+Package: prometheus-node-exporter
+Version: %VERSION%
+Architecture: amd64
+Source: node_exporter
+Maintainer: node_exporter <arshad.rad@gmail.com>
+Section: net
+Priority: optional
+Homepage: https://github.com/asnowfox/node_exporter
+Description: prometheus node exporter extended.
+ Features:
+ .
+ device monitor
+ device discover

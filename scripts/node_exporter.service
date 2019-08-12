@@ -1,0 +1,61 @@
+#!/bin/bash
+# description: prometheus node exporter service
+
+USER=root
+DAEMON='node_exporter --web.listen-address=:60616'
+
+start() {
+  count=$(ps -ef | grep 'node_exporter --web.listen-address=:60616' | grep -v grep | wc -l)
+  if [ $count != 0 ] ; then
+    echo 'node_exporter already is running' >&2
+    return 1
+  fi
+  local CMD="$DAEMON &"
+
+  echo 'Starting node_exporter…' >&2
+  su -s /bin/sh -c "$CMD" $USER
+  echo 'node_exporter started' >&2
+}
+
+stop() {
+  count=$(ps -ef | grep 'node_exporter --web.listen-address=:60616' | grep -v grep | wc -l)
+  if [ $count == 0 ] ; then
+    echo 'no node_exporter is running' >&2
+    return 1
+  fi
+  echo 'Stopping node_exporter...' >&2
+  pid=$(ps -ef | grep 'node_exporter --web.listen-address=:60616' | grep -v grep | awk '{print $2}')
+  kill -15 $pid && rm -f "$PIDFILE"
+  echo 'Service node_exporter stopped' >&2
+}
+
+status() {
+  count=$(ps -ef | grep 'node_exporter --web.listen-address=:60616' | grep -v grep | wc -l)
+
+  if [ $count != 0 ] ; then
+    echo 'node_exporter is running' >&2
+  else
+    echo 'node_exporter is not running' >&2
+  fi
+}
+
+case "$1" in
+    start)
+       start
+       ;;
+    stop)
+       stop
+       ;;
+    status)
+       status
+       ;;
+  restart)
+       stop
+       sleep 2
+       start
+       ;;
+    *)
+       echo "Usage: $0 {start|stop|status|restart}"
+esac
+
+exit 0

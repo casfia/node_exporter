@@ -1,0 +1,75 @@
+VERSION= 0.17.0
+PACKAGES= $(shell find . -name '*.go' -print0 | xargs -0 -n1 dirname | sort --unique)
+LDFLAGS= -ldflags "-X main.version=${VERSION}"
+DEBPATH= scripts/dpkg
+RPMPATH= scripts/rpmbuild
+ARCH=`uname -m`
+
+#default: test
+
+#test:
+#	go test -v ./... -timeout 1m
+
+#bench:
+#	go test -v ./... -bench=. -timeout 2m
+
+#run: build
+#	cd vflow; ./vflow -sflow-workers 100 -ipfix-workers 100
+
+#debug: build
+#	cd vflow; ./vflow -sflow-workers 100 -ipfix-workers 100 -verbose=true
+
+#gctrace: build
+#	cd vflow; env GODEBUG=gctrace=1 ./vflow -sflow-workers 100 -ipfix-workers 100
+
+#lint:
+#	golint ./...
+
+#cyclo:
+#	gocyclo -over 15 $(PACKAGES)
+
+#errcheck:
+#	errcheck ./...
+
+tools:
+	go get github.com/golang/lint/golint
+	go get github.com/kisielk/errcheck
+	go get github.com/alecthomas/gocyclo
+
+depends:
+	go get -d ./...
+
+build: depends
+	go build $(LDFLAGS)
+
+dpkg: build
+	mkdir -p ${DEBPATH}/etc/init.d ${DEBPATH}/etc/logrotate.d
+	mkdir -p ${DEBPATH}/etc/prometheus ${DEBPATH}/usr/share/doc/prometheus
+	mkdir -p ${DEBPATH}/usr/bin ${DEBPATH}/usr/local/prometheus
+	sed -i 's/%VERSION%/${VERSION}/' ${DEBPATH}/DEBIAN/control
+	cp node_exporter ${DEBPATH}/usr/bin/
+	chmod +x scripts/node_exporter.service scripts/node_exporter.logrotate
+	cp scripts/node_exporter.service ${DEBPATH}/etc/init.d/node_exporter
+	cp scripts/node_exporter.logrotate ${DEBPATH}/etc/logrotate.d/node_exporter
+
+	cp ${DEBPATH}/DEBIAN/copyright ${DEBPATH}/usr/share/doc/prometheus/
+	cp LICENSE ${DEBPATH}/usr/share/doc/prometheus/license
+	dpkg-deb -b ${DEBPATH}
+	mv ${DEBPATH}.deb scripts/prometheus_node_exporter-${VERSION}-${ARCH}.deb
+	sed -i 's/${VERSION}/%VERSION%/' ${DEBPATH}/DEBIAN/control
+
+rpm: build
+	sed -i 's/%VERSION%/${VERSION}/' ${RPMPATH}/SPECS/prometheus_node_exporter.spec
+	rm -rf ${RPMPATH}/SOURCES/
+	mkdir ${RPMPATH}/SOURCES/
+	cp node_exporter ${DEBPATH}/usr/bin/
+
+	cp scripts/node_exporter.service ${RPMPATH}/SOURCES/
+	cp scripts/node_exporter.logrotate ${RPMPATH}/SOURCES/
+
+
+	cp LICENSE ${RPMPATH}/SOURCES/license
+	cp NOTICE ${RPMPATH}/SOURCES/notice
+	apt-get install rpm
+	rpmbuild -ba ${RPMPATH}/SPECS/vflow.spec --define "_topdir `pwd`/scripts/rpmbuild"
+	sed -i 's/${VERSION}/%VERSION%/' ${RPMPATH}/SPECS/vflow.spec

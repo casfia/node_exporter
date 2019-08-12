@@ -1,0 +1,7 @@
+/var/log/prometheus_node_exporter.log {
+        size 200M
+        create 644 root root
+        compress
+        rotate 5
+        copytruncate
+}
