@@ -62,14 +62,13 @@ rpm: build
 	sed -i 's/%VERSION%/${VERSION}/' ${RPMPATH}/SPECS/prometheus_node_exporter.spec
 	rm -rf ${RPMPATH}/SOURCES/
 	mkdir ${RPMPATH}/SOURCES/
-	cp node_exporter ${DEBPATH}/usr/bin/
 
+	cp node_exporter ${RPMPATH}/SOURCES/
 	cp scripts/node_exporter.service ${RPMPATH}/SOURCES/
 	cp scripts/node_exporter.logrotate ${RPMPATH}/SOURCES/
-
-
 	cp LICENSE ${RPMPATH}/SOURCES/license
 	cp NOTICE ${RPMPATH}/SOURCES/notice
-	apt-get install rpm
-	rpmbuild -ba ${RPMPATH}/SPECS/vflow.spec --define "_topdir `pwd`/scripts/rpmbuild"
-	sed -i 's/${VERSION}/%VERSION%/' ${RPMPATH}/SPECS/vflow.spec
+
+	yum install rpm && yum install rpm-build || apt-get install rpm
+	rpmbuild -ba ${RPMPATH}/SPECS/prometheus_node_exporter.spec --define "_topdir `pwd`/scripts/rpmbuild"
+	sed -i 's/${VERSION}/%VERSION%/' ${RPMPATH}/SPECS/prometheus_node_exporter.spec
