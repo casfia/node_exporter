@@ -5,7 +5,7 @@ import (
 	"github.com/libvirt/libvirt-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"log"
-	"node_exporter/libvirt_schema"
+	"node_exporter/collector/libvirt_schema"
 )
 
 // +build !nocpu
