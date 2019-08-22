@@ -4,8 +4,8 @@ import (
 	"encoding/xml"
 	"github.com/libvirt/libvirt-go"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/node_exporter/collector/libvirt_schema"
 	"log"
-	"node_exporter/collector/libvirt_schema"
 )
 
 // +build !nocpu
