@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package collector
+package libvirt_schema
 
 type Domain struct {
 	Devices  Devices  `xml:"devices"`
@@ -58,8 +58,10 @@ type DiskTarget struct {
 }
 
 type Interface struct {
+	Mac    InterfaceMac    `xml:"mac"`
 	Source InterfaceSource `xml:"source"`
 	Target InterfaceTarget `xml:"target"`
+	Model  InterfaceModel  `xml:"model"`
 }
 
 type InterfaceSource struct {
@@ -68,4 +70,12 @@ type InterfaceSource struct {
 
 type InterfaceTarget struct {
 	Device string `xml:"dev,attr"`
+}
+
+type InterfaceMac struct {
+	Address string `xml:"address,attr"`
+}
+
+type InterfaceModel struct {
+	Type string `xml:"type,attr"`
 }

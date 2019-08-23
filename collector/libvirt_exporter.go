@@ -17,22 +17,34 @@ import (
 	"encoding/xml"
 	"github.com/libvirt/libvirt-go"
 	"github.com/prometheus/client_golang/prometheus"
+	"libvirt_exporter/libvirt_schema"
 	"log"
 )
 
-// libvirtCollector implements a Prometheus exporter for libvirt state.
-type libvirtCollector struct {
+// LibvirtExporter implements a Prometheus exporter for libvirt state.
+type LibvirtExporter struct {
 	uri                string
 	exportNovaMetadata bool
 
 	libvirtUpDesc *prometheus.Desc
 
+	// domain info
 	libvirtDomainInfoMaxMemDesc    *prometheus.Desc
 	libvirtDomainInfoMemoryDesc    *prometheus.Desc
 	libvirtDomainInfoNrVirtCpuDesc *prometheus.Desc
 	libvirtDomainInfoCpuTimeDesc   *prometheus.Desc
 	libvirtDomainInfoDomainState   *prometheus.Desc
 
+	//domain cpu info
+	libvirtDomainCpuCpuTime    *prometheus.Desc
+	libvirtDomainCpuUserTime   *prometheus.Desc
+	libvirtDomainCpuSystemTime *prometheus.Desc
+	libvirtDomainCpuVcpuTime   *prometheus.Desc
+
+	//domain block info
+	libvirtDomainBlockCapacity            *prometheus.Desc
+	libvirtDomainBlockAllocation          *prometheus.Desc
+	libvirtDomainBlockPhysical            *prometheus.Desc
 	libvirtDomainBlockRdBytesDesc         *prometheus.Desc
 	libvirtDomainBlockRdReqDesc           *prometheus.Desc
 	libvirtDomainBlockRdTotalTimesDesc    *prometheus.Desc
@@ -42,6 +54,8 @@ type libvirtCollector struct {
 	libvirtDomainBlockFlushReqDesc        *prometheus.Desc
 	libvirtDomainBlockFlushTotalTimesDesc *prometheus.Desc
 
+	// domain interface info
+	libvirtDomainInterfaceAddresses     *prometheus.Desc
 	libvirtDomainInterfaceRxBytesDesc   *prometheus.Desc
 	libvirtDomainInterfaceRxPacketsDesc *prometheus.Desc
 	libvirtDomainInterfaceRxErrsDesc    *prometheus.Desc
@@ -50,16 +64,18 @@ type libvirtCollector struct {
 	libvirtDomainInterfaceTxPacketsDesc *prometheus.Desc
 	libvirtDomainInterfaceTxErrsDesc    *prometheus.Desc
 	libvirtDomainInterfaceTxDropDesc    *prometheus.Desc
+
+	// domain interface params
 }
 
 func init() {
-	registerCollector("cpu", defaultEnabled, NewLibvirtCollector)
+	registerCollector("libvirt_exporter", defaultEnabled, NewLibvirtExporter)
 }
 
 // NewLibvirtExporter creates a new Prometheus exporter for libvirt.使用uri和是否导出nova信息2个参数启动exporter
-func NewLibvirtCollector() (Collector, error) {
+func NewLibvirtExporter() (Collector, error) {
 	var domainLabels = []string{"domain", "uuid", "name", "flavor", "project_name"}
-	return &libvirtCollector{
+	return &LibvirtExporter{
 		uri:                "qemu:///system",
 		exportNovaMetadata: true,
 		libvirtUpDesc: prometheus.NewDesc(
@@ -91,6 +107,41 @@ func NewLibvirtCollector() (Collector, error) {
 			prometheus.BuildFQName("libvirt", "domain_info", "cpu_time_seconds_total"),
 			"Amount of CPU time used by the domain, in seconds.",
 			domainLabels,
+			nil),
+		libvirtDomainCpuCpuTime: prometheus.NewDesc(
+			prometheus.BuildFQName("libvirt", "domain_cpu_state", "cpu_cpu_time_ns"),
+			"Cpu time used in ns.",
+			domainLabels,
+			nil),
+		libvirtDomainCpuUserTime: prometheus.NewDesc(
+			prometheus.BuildFQName("libvirt", "domain_cpu_state", "cpu_user_time_ns"),
+			"Cpu time used by user in ns.",
+			domainLabels,
+			nil),
+		libvirtDomainCpuSystemTime: prometheus.NewDesc(
+			prometheus.BuildFQName("libvirt", "domain_cpu_state", "cpu_system_time_ns"),
+			"Cpu time used by system in ns.",
+			domainLabels,
+			nil),
+		libvirtDomainCpuVcpuTime: prometheus.NewDesc(
+			prometheus.BuildFQName("libvirt", "domain_cpu_state", "cpu_vcpu_time_ns"),
+			"vcpu time used in ns.",
+			domainLabels,
+			nil),
+		libvirtDomainBlockCapacity: prometheus.NewDesc(
+			prometheus.BuildFQName("libvirt", "domain_block_stats", "block_capacity"),
+			"logical size in bytes of the image (how much storage the guest will see).",
+			append(domainLabels, "source_file", "target_device"),
+			nil),
+		libvirtDomainBlockAllocation: prometheus.NewDesc(
+			prometheus.BuildFQName("libvirt", "domain_block_stats", "block_allocation"),
+			"host storage in bytes occupied by the image (such as highest allocated extent if there are no holes, similar to 'du').",
+			append(domainLabels, "source_file", "target_device"),
+			nil),
+		libvirtDomainBlockPhysical: prometheus.NewDesc(
+			prometheus.BuildFQName("libvirt", "domain_block_stats", "block_physical"),
+			"host physical size in bytes of the image container (last offset, similar to 'ls'.",
+			append(domainLabels, "source_file", "target_device"),
 			nil),
 		libvirtDomainBlockRdBytesDesc: prometheus.NewDesc(
 			prometheus.BuildFQName("libvirt", "domain_block_stats", "read_bytes_total"),
@@ -134,6 +185,11 @@ func NewLibvirtCollector() (Collector, error) {
 			append(domainLabels, "source_file", "target_device"),
 			nil),
 
+		libvirtDomainInterfaceAddresses: prometheus.NewDesc(
+			prometheus.BuildFQName("libvirt", "domain_interface_info", "interface_info_addresses"),
+			"Network interface info .",
+			append(domainLabels, "source_bridge", "target_device", "domain_interface"),
+			nil),
 		libvirtDomainInterfaceRxBytesDesc: prometheus.NewDesc(
 			prometheus.BuildFQName("libvirt", "domain_interface_stats", "receive_bytes_total"),
 			"Number of bytes received on a network interface, in bytes.",
@@ -177,8 +233,36 @@ func NewLibvirtCollector() (Collector, error) {
 	}, nil
 }
 
+// Describe returns metadata for all Prometheus metrics that may be exported.
+func (e *LibvirtExporter) Describe(ch chan<- *prometheus.Desc) {
+	ch <- e.libvirtUpDesc
+
+	ch <- e.libvirtDomainCpuCpuTime
+	ch <- e.libvirtDomainCpuUserTime
+	ch <- e.libvirtDomainCpuSystemTime
+	ch <- e.libvirtDomainCpuVcpuTime
+
+	ch <- e.libvirtDomainInfoDomainState
+	ch <- e.libvirtDomainInfoMaxMemDesc
+	ch <- e.libvirtDomainInfoMemoryDesc
+	ch <- e.libvirtDomainInfoNrVirtCpuDesc
+	ch <- e.libvirtDomainInfoCpuTimeDesc
+
+	ch <- e.libvirtDomainBlockCapacity
+	ch <- e.libvirtDomainBlockAllocation
+	ch <- e.libvirtDomainBlockPhysical
+	ch <- e.libvirtDomainBlockRdBytesDesc
+	ch <- e.libvirtDomainBlockRdReqDesc
+	ch <- e.libvirtDomainBlockRdTotalTimesDesc
+	ch <- e.libvirtDomainBlockWrBytesDesc
+	ch <- e.libvirtDomainBlockWrReqDesc
+	ch <- e.libvirtDomainBlockWrTotalTimesDesc
+	ch <- e.libvirtDomainBlockFlushReqDesc
+	ch <- e.libvirtDomainBlockFlushTotalTimesDesc
+}
+
 // Collect scrapes Prometheus metrics from libvirt.
-func (e *libvirtCollector) Update(ch chan<- prometheus.Metric) error {
+func (e *LibvirtExporter) Update(ch chan<- prometheus.Metric) error {
 	err := e.CollectFromLibvirt(ch)
 	if err == nil {
 		ch <- prometheus.MustNewConstMetric(
@@ -198,7 +282,7 @@ func (e *libvirtCollector) Update(ch chan<- prometheus.Metric) error {
 
 // CollectFromLibvirt obtains Prometheus metrics from all domains in a
 // libvirt setup.
-func (e *libvirtCollector) CollectFromLibvirt(ch chan<- prometheus.Metric) error {
+func (e *LibvirtExporter) CollectFromLibvirt(ch chan<- prometheus.Metric) error {
 	conn, err := libvirt.NewConnect(e.uri)
 	if err != nil {
 		return err
@@ -216,7 +300,7 @@ func (e *libvirtCollector) CollectFromLibvirt(ch chan<- prometheus.Metric) error
 		domain, err := conn.LookupDomainById(id)
 		if err == nil {
 			err = e.CollectDomain(ch, domain)
-			_ = domain.Free()
+			domain.Free()
 			if err != nil {
 				return err
 			}
@@ -227,13 +311,13 @@ func (e *libvirtCollector) CollectFromLibvirt(ch chan<- prometheus.Metric) error
 }
 
 // CollectDomain extracts Prometheus metrics from a libvirt domain.
-func (e *libvirtCollector) CollectDomain(ch chan<- prometheus.Metric, domain *libvirt.Domain) error {
+func (e *LibvirtExporter) CollectDomain(ch chan<- prometheus.Metric, domain *libvirt.Domain) error {
 	// Decode XML description of domain to get block device names, etc.
 	xmlDesc, err := domain.GetXMLDesc(0)
 	if err != nil {
 		return err
 	}
-	var desc Domain
+	var desc libvirt_schema.Domain
 	err = xml.Unmarshal([]byte(xmlDesc), &desc)
 	if err != nil {
 		return err
@@ -266,8 +350,7 @@ func (e *libvirtCollector) CollectDomain(ch chan<- prometheus.Metric, domain *li
 		e.libvirtDomainInfoDomainState,
 		prometheus.GaugeValue,
 		float64(info.State),
-		domainLabelValues...,
-	)
+		domainLabelValues...)
 	ch <- prometheus.MustNewConstMetric(
 		e.libvirtDomainInfoMaxMemDesc,
 		prometheus.GaugeValue,
@@ -289,17 +372,76 @@ func (e *libvirtCollector) CollectDomain(ch chan<- prometheus.Metric, domain *li
 		float64(info.CpuTime)/1e9,
 		domainLabelValues...)
 
+	// Report cpu statistics
+	// -1返回的是整个虚机的cpu统计信息,因此虽然是个数组，但是只有1个
+	cpuStates, err := domain.GetCPUStats(-1, 0, 0)
+	if err != nil {
+		return err
+	}
+	cpuState := cpuStates[0]
+	if cpuState.CpuTimeSet {
+		ch <- prometheus.MustNewConstMetric(
+			e.libvirtDomainCpuCpuTime,
+			prometheus.CounterValue,
+			float64(cpuState.CpuTime),
+			append(domainLabelValues)...)
+	}
+	if cpuState.SystemTimeSet {
+		ch <- prometheus.MustNewConstMetric(
+			e.libvirtDomainCpuSystemTime,
+			prometheus.CounterValue,
+			float64(cpuState.SystemTime),
+			append(domainLabelValues)...)
+	}
+	if cpuState.UserTimeSet {
+		ch <- prometheus.MustNewConstMetric(
+			e.libvirtDomainCpuUserTime,
+			prometheus.CounterValue,
+			float64(cpuState.UserTime),
+			append(domainLabelValues)...)
+	}
+	if cpuState.VcpuTimeSet {
+		ch <- prometheus.MustNewConstMetric(
+			e.libvirtDomainCpuVcpuTime,
+			prometheus.CounterValue,
+			float64(cpuState.VcpuTime),
+			append(domainLabelValues)...)
+	}
+
+	// Report memory statistics
+
 	// Report block device statistics.
 	for _, disk := range desc.Devices.Disks {
 		if disk.Device == "cdrom" || disk.Device == "fd" {
 			continue
 		}
-
 		blockStats, err := domain.BlockStats(disk.Target.Device)
 		if err != nil {
 			return err
 		}
 
+		//block total info
+		blockInfo, err := domain.GetBlockInfo(disk.Target.Device, 0)
+		if err != nil {
+			return err
+		}
+		ch <- prometheus.MustNewConstMetric(
+			e.libvirtDomainBlockCapacity,
+			prometheus.GaugeValue,
+			float64(blockInfo.Capacity),
+			append(domainLabelValues, disk.Source.File, disk.Target.Device)...)
+		ch <- prometheus.MustNewConstMetric(
+			e.libvirtDomainBlockAllocation,
+			prometheus.GaugeValue,
+			float64(blockInfo.Allocation),
+			append(domainLabelValues, disk.Source.File, disk.Target.Device)...)
+		ch <- prometheus.MustNewConstMetric(
+			e.libvirtDomainBlockPhysical,
+			prometheus.GaugeValue,
+			float64(blockInfo.Physical),
+			append(domainLabelValues, disk.Source.File, disk.Target.Device)...)
+
+		//block rx info.
 		if blockStats.RdBytesSet {
 			ch <- prometheus.MustNewConstMetric(
 				e.libvirtDomainBlockRdBytesDesc,
@@ -370,6 +512,7 @@ func (e *libvirtCollector) CollectDomain(ch chan<- prometheus.Metric, domain *li
 			return err
 		}
 
+		// network rx state
 		if interfaceStats.RxBytesSet {
 			ch <- prometheus.MustNewConstMetric(
 				e.libvirtDomainInterfaceRxBytesDesc,
