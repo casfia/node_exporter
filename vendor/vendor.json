@@ -1,0 +1,25 @@
+{
+	"comment": "",
+	"ignore": "",
+	"package": [
+		{
+			"checksumSHA1": "Akj3D3F4+NDi/h6SQvkuEBxpsJE=",
+			"path": "github.com/deckarep/golang-set",
+			"revision": "699df6a3acf6867538e50931511e9dc403da108a",
+			"revisionTime": "2018-09-27T02:58:44Z"
+		},
+		{
+			"checksumSHA1": "PEJjX15bXvs6BfpFnjY7J6HuOs8=",
+			"path": "github.com/libvirt/libvirt-go",
+			"revision": "21453068bc721e28f1843c71b3514880c354d3f3",
+			"revisionTime": "2019-08-06T14:17:54Z"
+		},
+		{
+			"checksumSHA1": "5TUIO+CaTr2sqW1z+gMpt9EsI/0=",
+			"path": "github.com/pkg/errors",
+			"revision": "27936f6d90f9c8e1145f11ed52ffffbfdb9e0af7",
+			"revisionTime": "2019-02-27T00:00:51Z"
+		}
+	],
+	"rootPath": "github.com/prometheus/node_exporter"
+}

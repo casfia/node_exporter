@@ -17,11 +17,8 @@ import (
 	"encoding/xml"
 	"github.com/libvirt/libvirt-go"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/node_exporter/collector/libvirt_schema"
 	"log"
 )
-
-// +build !nocpu
 
 // libvirtCollector implements a Prometheus exporter for libvirt state.
 type libvirtCollector struct {
@@ -219,7 +216,7 @@ func (e *libvirtCollector) CollectFromLibvirt(ch chan<- prometheus.Metric) error
 		domain, err := conn.LookupDomainById(id)
 		if err == nil {
 			err = e.CollectDomain(ch, domain)
-			domain.Free()
+			_ = domain.Free()
 			if err != nil {
 				return err
 			}
@@ -236,7 +233,7 @@ func (e *libvirtCollector) CollectDomain(ch chan<- prometheus.Metric, domain *li
 	if err != nil {
 		return err
 	}
-	var desc libvirt_schema.Domain
+	var desc Domain
 	err = xml.Unmarshal([]byte(xmlDesc), &desc)
 	if err != nil {
 		return err
