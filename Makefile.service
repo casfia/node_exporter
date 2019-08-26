@@ -32,12 +32,10 @@ ARCH=`uname -m`
 #	errcheck ./...
 
 tools:
-	go get github.com/golang/lint/golint
-	go get github.com/kisielk/errcheck
-	go get github.com/alecthomas/gocyclo
 
 depends:
-	go get -d ./...
+	mkdir -p vendor/github.com/shirou
+	cd vendor/github.com/shirou && git clone https://github.com/asnowfox/gopsutil.git
 
 build: depends
 	go build $(LDFLAGS)
