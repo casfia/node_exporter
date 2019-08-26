@@ -32,7 +32,7 @@ ARCH=`uname -m`
 #	errcheck ./...
 
 tools:
-    apt install pkg-config libvirt-dev
+	sudo apt install pkg-config libvirt-dev
 
 depends: tools
 	mkdir -p vendor/github.com/shirou
