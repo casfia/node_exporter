@@ -41,6 +41,13 @@ type LibvirtExporter struct {
 	libvirtDomainCpuSystemTime *prometheus.Desc
 	libvirtDomainCpuVcpuTime   *prometheus.Desc
 
+	//domain mem info
+	libvirtDomainMemUnused     *prometheus.Desc
+	libvirtDomainMemAvailable  *prometheus.Desc
+	libvirtDomainMemUsable     *prometheus.Desc
+	libvirtDomainMemRss        *prometheus.Desc
+	libvirtDomainMemLastUpdate *prometheus.Desc
+
 	//domain block info
 	libvirtDomainBlockCapacity            *prometheus.Desc
 	libvirtDomainBlockAllocation          *prometheus.Desc
@@ -128,6 +135,33 @@ func NewLibvirtExporter() (Collector, error) {
 			"vcpu time used in ns.",
 			domainLabels,
 			nil),
+		// domain memory info
+		libvirtDomainMemUnused: prometheus.NewDesc(
+			prometheus.BuildFQName("libvirt", "domain_mem_state", "mem_unused"),
+			"The amount of memory left completely unused by the system. This value is expressed in kB.",
+			domainLabels,
+			nil),
+		libvirtDomainMemAvailable: prometheus.NewDesc(
+			prometheus.BuildFQName("libvirt", "domain_mem_state", "mem_available"),
+			"The total amount of usable memory as seen by the domain. This value is expressed in kB.",
+			domainLabels,
+			nil),
+		libvirtDomainMemUsable: prometheus.NewDesc(
+			prometheus.BuildFQName("libvirt", "domain_mem_state", "mem_usable"),
+			"How much the balloon can be inflated without pushing the guest system to swap, corresponds to 'Available' in /proc/meminfo",
+			domainLabels,
+			nil),
+		libvirtDomainMemRss: prometheus.NewDesc(
+			prometheus.BuildFQName("libvirt", "domain_mem_state", "mem_rss"),
+			"Resident Set Size of the process running the domain. This value is in kB",
+			domainLabels,
+			nil),
+		libvirtDomainMemLastUpdate: prometheus.NewDesc(
+			prometheus.BuildFQName("libvirt", "domain_mem_state", "mem_last_update"),
+			"Timestamp of the last update of statistics, in seconds.",
+			domainLabels,
+			nil),
+		// domain block info
 		libvirtDomainBlockCapacity: prometheus.NewDesc(
 			prometheus.BuildFQName("libvirt", "domain_block_stats", "block_capacity"),
 			"logical size in bytes of the image (how much storage the guest will see).",
@@ -247,6 +281,13 @@ func (e *LibvirtExporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.libvirtDomainInfoMemoryDesc
 	ch <- e.libvirtDomainInfoNrVirtCpuDesc
 	ch <- e.libvirtDomainInfoCpuTimeDesc
+
+	// domain memory info
+	ch <- e.libvirtDomainMemUnused
+	ch <- e.libvirtDomainMemAvailable
+	ch <- e.libvirtDomainMemUsable
+	ch <- e.libvirtDomainMemRss
+	ch <- e.libvirtDomainMemLastUpdate
 
 	ch <- e.libvirtDomainBlockCapacity
 	ch <- e.libvirtDomainBlockAllocation
@@ -409,6 +450,47 @@ func (e *LibvirtExporter) CollectDomain(ch chan<- prometheus.Metric, domain *lib
 	}
 
 	// Report memory statistics
+	memStats, err := domain.MemoryStats(15, 0) // 15 DOMAIN_MEMORY_STAT totally,flags not used.
+	if err != nil {
+		return err
+	}
+	// see https://libvirt.org/html/libvirt-libvirt-domain.html#VIR_DOMAIN_MEMORY_STAT_UNUSED
+	for _, memStat := range memStats {
+		switch memStat.Tag {
+		case 4:
+			ch <- prometheus.MustNewConstMetric(
+				e.libvirtDomainMemUnused,
+				prometheus.GaugeValue,
+				float64(memStat.Val),
+				append(domainLabelValues)...)
+		case 5:
+			ch <- prometheus.MustNewConstMetric(
+				e.libvirtDomainMemAvailable,
+				prometheus.GaugeValue,
+				float64(memStat.Val),
+				append(domainLabelValues)...)
+		case 7:
+			ch <- prometheus.MustNewConstMetric(
+				e.libvirtDomainMemRss,
+				prometheus.GaugeValue,
+				float64(memStat.Val),
+				append(domainLabelValues)...)
+		case 8:
+			ch <- prometheus.MustNewConstMetric(
+				e.libvirtDomainMemUsable,
+				prometheus.GaugeValue,
+				float64(memStat.Val),
+				append(domainLabelValues)...)
+		case 9:
+			ch <- prometheus.MustNewConstMetric(
+				e.libvirtDomainMemLastUpdate,
+				prometheus.GaugeValue,
+				float64(memStat.Val),
+				append(domainLabelValues)...)
+		default:
+			// no need to do
+		}
+	}
 
 	// Report block device statistics.
 	for _, disk := range desc.Devices.Disks {
