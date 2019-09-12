@@ -15,6 +15,7 @@ package collector
 
 import (
 	"encoding/xml"
+	"fmt"
 	"github.com/libvirt/libvirt-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"libvirt_exporter/libvirt_schema"
@@ -27,6 +28,9 @@ type LibvirtExporter struct {
 	exportNovaMetadata bool
 
 	libvirtUpDesc *prometheus.Desc
+
+	libvirtDomainActive *prometheus.Desc
+	libvirtDomainTotal  *prometheus.Desc
 
 	// domain info
 	libvirtDomainInfoMaxMemDesc    *prometheus.Desc
@@ -90,6 +94,17 @@ func NewLibvirtExporter() (Collector, error) {
 			"Whether scraping libvirt's metrics was successful.",
 			nil,
 			nil),
+		libvirtDomainActive: prometheus.NewDesc(
+			prometheus.BuildFQName("libvirt", "", "active"),
+			"the number of active domains.",
+			nil,
+			nil),
+		libvirtDomainTotal: prometheus.NewDesc(
+			prometheus.BuildFQName("libvirt", "", "total"),
+			"the number of active and inactive domains (total).",
+			nil,
+			nil),
+		// domain info
 		libvirtDomainInfoDomainState: prometheus.NewDesc(
 			prometheus.BuildFQName("libvirt", "domain_info", "domain_state"),
 			"the state of the domain.",
@@ -270,6 +285,8 @@ func NewLibvirtExporter() (Collector, error) {
 // Describe returns metadata for all Prometheus metrics that may be exported.
 func (e *LibvirtExporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.libvirtUpDesc
+	ch <- e.libvirtDomainActive
+	ch <- e.libvirtDomainTotal
 
 	ch <- e.libvirtDomainCpuCpuTime
 	ch <- e.libvirtDomainCpuUserTime
@@ -330,6 +347,16 @@ func (e *LibvirtExporter) CollectFromLibvirt(ch chan<- prometheus.Metric) error 
 	}
 	defer conn.Close()
 
+	allDomain, err := conn.ListAllDomains(libvirt.CONNECT_LIST_DOMAINS_ACTIVE | libvirt.CONNECT_LIST_DOMAINS_INACTIVE)
+	if err != nil {
+		return err
+	}
+	fmt.Println("All domains:", len(allDomain))
+	ch <- prometheus.MustNewConstMetric(
+		e.libvirtDomainTotal,
+		prometheus.GaugeValue,
+		float64(len(allDomain)))
+
 	// Use ListDomains() as opposed to using ListAllDomains(), as
 	// the latter is unsupported when talking to a system using
 	// libvirt 0.9.12 or older.
@@ -337,6 +364,11 @@ func (e *LibvirtExporter) CollectFromLibvirt(ch chan<- prometheus.Metric) error 
 	if err != nil {
 		return err
 	}
+	ch <- prometheus.MustNewConstMetric(
+		e.libvirtDomainActive,
+		prometheus.GaugeValue,
+		float64(len(domainIds)))
+
 	for _, id := range domainIds {
 		domain, err := conn.LookupDomainById(id)
 		if err == nil {
