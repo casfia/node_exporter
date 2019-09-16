@@ -15,7 +15,6 @@ package collector
 
 import (
 	"encoding/xml"
-	"fmt"
 	"github.com/libvirt/libvirt-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"libvirt_exporter/libvirt_schema"
@@ -347,16 +346,6 @@ func (e *LibvirtExporter) CollectFromLibvirt(ch chan<- prometheus.Metric) error 
 	}
 	defer conn.Close()
 
-	allDomain, err := conn.ListAllDomains(libvirt.CONNECT_LIST_DOMAINS_ACTIVE | libvirt.CONNECT_LIST_DOMAINS_INACTIVE)
-	if err != nil {
-		return err
-	}
-	fmt.Println("All domains:", len(allDomain))
-	ch <- prometheus.MustNewConstMetric(
-		e.libvirtDomainTotal,
-		prometheus.GaugeValue,
-		float64(len(allDomain)))
-
 	// Use ListDomains() as opposed to using ListAllDomains(), as
 	// the latter is unsupported when talking to a system using
 	// libvirt 0.9.12 or older.
@@ -368,6 +357,19 @@ func (e *LibvirtExporter) CollectFromLibvirt(ch chan<- prometheus.Metric) error 
 		e.libvirtDomainActive,
 		prometheus.GaugeValue,
 		float64(len(domainIds)))
+
+	//allDomain, err := conn.ListAllDomains(libvirt.CONNECT_LIST_DOMAINS_ACTIVE | libvirt.CONNECT_LIST_DOMAINS_INACTIVE)
+	allDomain, err := conn.ListAllDomains(libvirt.CONNECT_LIST_DOMAINS_INACTIVE)
+	if err != nil {
+		return err
+	}
+	ch <- prometheus.MustNewConstMetric(
+		e.libvirtDomainTotal,
+		prometheus.GaugeValue,
+		float64(len(allDomain)+len(domainIds)))
+	for _, ad := range allDomain {
+		ad.Free()
+	}
 
 	for _, id := range domainIds {
 		domain, err := conn.LookupDomainById(id)
