@@ -160,7 +160,7 @@ package:
     cd ${GOPATH-$HOME/go}/src/github.com/prometheus/
     git clone https://github.com/asnowfox/node_exporter.git
     cd ${GOPATH-$HOME/go}/src/github.com/prometheus/node_exporter
-    make -f Makefile.service dpkg
+    make -f Makefile.service  WITH_LIBVIRT=0 dpkg
     #the deb file can be find in scripts directory.
 
 To see all available configuration flags:
