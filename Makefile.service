@@ -33,7 +33,7 @@ ARCH=`uname -m`
 
 tools:
 	sudo apt install pkg-config
-	ifeq ($(WITH_LIBVIRT), TRUE)
+	ifeq ($(WITH_LIBVIRT), 1)
 	    sudo apt install libvirt-dev
     endif
 
@@ -42,7 +42,7 @@ depends: tools
 	cd vendor/github.com/shirou && git clone https://github.com/asnowfox/gopsutil.git
 
 build: depends
-    ifeq ($(WITH_LIBVIRT), TRUE)
+    ifeq ($(WITH_LIBVIRT), 1)
 	    go build -tags libvirt
 	else
 	    go build
