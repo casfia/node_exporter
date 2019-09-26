@@ -14,10 +14,10 @@
 package collector
 
 import (
+	"./libvirt_schema"
 	"encoding/xml"
 	"github.com/libvirt/libvirt-go"
 	"github.com/prometheus/client_golang/prometheus"
-	"libvirt_exporter/libvirt_schema"
 	"log"
 )
 
