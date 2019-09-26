@@ -32,14 +32,21 @@ ARCH=`uname -m`
 #	errcheck ./...
 
 tools:
-	sudo apt install pkg-config libvirt-dev
+	sudo apt install pkg-config
+	ifeq ($(WITH_LIBVIRT), TRUE)
+	    sudo apt install libvirt-dev
+    endif
 
 depends: tools
 	mkdir -p vendor/github.com/shirou
 	cd vendor/github.com/shirou && git clone https://github.com/asnowfox/gopsutil.git
 
 build: depends
-	go build $(LDFLAGS)
+    ifeq ($(WITH_LIBVIRT), TRUE)
+	    go build -tags libvirt
+	else
+	    go build
+	endif
 
 dpkg: build
 	mkdir -p ${DEBPATH}/etc/init.d ${DEBPATH}/etc/logrotate.d
