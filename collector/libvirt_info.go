@@ -14,7 +14,6 @@
 package collector
 
 import (
-	"./libvirt_schema"
 	"encoding/xml"
 	"github.com/libvirt/libvirt-go"
 	"github.com/prometheus/client_golang/prometheus"
@@ -79,7 +78,7 @@ type LibvirtExporter struct {
 }
 
 func init() {
-	registerCollector("libvirt_exporter", defaultEnabled, NewLibvirtExporter)
+	registerCollector("libvirt", defaultEnabled, NewLibvirtExporter)
 }
 
 // NewLibvirtExporter creates a new Prometheus exporter for libvirt.使用uri和是否导出nova信息2个参数启动exporter
@@ -392,7 +391,7 @@ func (e *LibvirtExporter) CollectDomain(ch chan<- prometheus.Metric, domain *lib
 	if err != nil {
 		return err
 	}
-	var desc libvirt_schema.Domain
+	var desc Domain
 	err = xml.Unmarshal([]byte(xmlDesc), &desc)
 	if err != nil {
 		return err

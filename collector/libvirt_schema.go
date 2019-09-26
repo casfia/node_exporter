@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package libvirt_schema
+package collector
 
 type Domain struct {
 	Devices  Devices  `xml:"devices"`
