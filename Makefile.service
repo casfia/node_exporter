@@ -13,24 +13,6 @@ ARCH=`uname -m`
 #bench:
 #	go test -v ./... -bench=. -timeout 2m
 
-#run: build
-#	cd vflow; ./vflow -sflow-workers 100 -ipfix-workers 100
-
-#debug: build
-#	cd vflow; ./vflow -sflow-workers 100 -ipfix-workers 100 -verbose=true
-
-#gctrace: build
-#	cd vflow; env GODEBUG=gctrace=1 ./vflow -sflow-workers 100 -ipfix-workers 100
-
-#lint:
-#	golint ./...
-
-#cyclo:
-#	gocyclo -over 15 $(PACKAGES)
-
-#errcheck:
-#	errcheck ./...
-
 tools:
 #sudo apt install pkg-config
     ifeq ($(WITH_LIBVIRT),1)
@@ -38,8 +20,10 @@ tools:
     endif
 	sudo apt install pkg-config
 depends: tools
-	mkdir -p vendor/github.com/shirou
-	cd vendor/github.com/shirou && git clone https://github.com/asnowfox/gopsutil.git
+#	if [ ! -d "vendor/github/shirou" ];then
+#	mkdir -p vendor/github.com/shirou
+#	cd vendor/github.com/shirou && git clone https://github.com/asnowfox/gopsutil.git
+#	fi
 
 build: depends
     ifeq ($(WITH_LIBVIRT), 1)
