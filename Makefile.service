@@ -24,6 +24,10 @@ depends: tools
 #	mkdir -p vendor/github.com/shirou
 #	cd vendor/github.com/shirou && git clone https://github.com/asnowfox/gopsutil.git
 #	fi
+	@if [ ! -d "$(DEPENDCY_SYS)/sys" ];then \
+		echo "Dependancy [golang.org/x/sys)] not exist,downloading..." \
+		cd $(DEPENDCY_SYS) && git clone https://github.com/golang/sys.git; \
+	fi
 
 build: depends
     ifeq ($(WITH_LIBVIRT), 1)
