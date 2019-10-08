@@ -19,6 +19,12 @@
 			"path": "github.com/pkg/errors",
 			"revision": "27936f6d90f9c8e1145f11ed52ffffbfdb9e0af7",
 			"revisionTime": "2019-02-27T00:00:51Z"
+		},
+		{
+			"checksumSHA1": "vqEoTYHTmjj/xHBT+wd41CeTyE0=",
+			"path": "github.com/shirou/gopsutil",
+			"revision": "1c09419d4b1c4c19e06d9f48b9406bda27d32acd",
+			"revisionTime": "2019-10-01T14:50:21Z"
 		}
 	],
 	"rootPath": "github.com/prometheus/node_exporter"
