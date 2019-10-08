@@ -16,9 +16,10 @@ ARCH=`uname -m`
 tools:
 #sudo apt install pkg-config
     ifeq ($(WITH_LIBVIRT),1)
-    sudo apt install libvirt-dev
+	sudo apt install libvirt-dev
     endif
 	sudo apt install pkg-config
+
 depends: tools
 #	if [ ! -d "vendor/github/shirou" ];then
 #	mkdir -p vendor/github.com/shirou
