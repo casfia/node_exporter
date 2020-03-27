@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 import os
+import sys
 import sched
 import time
 import subprocess
@@ -71,6 +72,7 @@ if __name__ == '__main__':
             device_ip = ip_addr
             break;
     if device_ip is '':
+        print('no ip found')
         sys.exit(1)
     pid=os.fork()
     if pid != 0:
