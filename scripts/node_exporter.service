@@ -10,10 +10,11 @@ start() {
     echo 'node_exporter already is running' >&2
     return 1
   fi
-  local CMD="$DAEMON &"
-
+  local CMD="$DAEMON > /dev/null&"
   echo 'Starting node_exporter…' >&2
   su -s /bin/sh -c "$CMD" $USER
+  # sleep to wait cmd execute ok
+  sleep 2
   echo 'node_exporter started' >&2
 }
 
