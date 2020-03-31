@@ -1,0 +1,62 @@
+#!/bin/bash
+# description: prometheus result pusher service
+
+USER=root
+DAEMON='python3 /usr/bin/prometheus_pusher.py'
+
+start() {
+  count=$(ps -ef | grep 'python3 /usr/bin/prometheus_pusher.py' | grep -v grep | wc -l)
+  if [ $count != 0 ] ; then
+    echo 'prometheus_pusher already is running' >&2
+    return 1
+  fi
+  local CMD="$DAEMON > /dev/null&"
+  echo 'Starting prometheus_pusher…' >&2
+  su -s /bin/sh -c "$CMD" $USER
+  # sleep to wait cmd execute ok
+  sleep 2
+  echo 'prometheus_pusher started' >&2
+}
+
+stop() {
+  count=$(ps -ef | grep 'python3 /usr/bin/prometheus_pusher.py' | grep -v grep | wc -l)
+  if [ $count == 0 ] ; then
+    echo 'no prometheus_pusher is running' >&2
+    return 1
+  fi
+  echo 'Stopping prometheus_pusher...' >&2
+  pid=$(ps -ef | grep 'python3 /usr/bin/prometheus_pusher.py' | grep -v grep | awk '{print $2}')
+  kill -15 $pid && rm -f "$PIDFILE"
+  echo 'Service prometheus_pusher stopped' >&2
+}
+
+status() {
+  count=$(ps -ef | grep 'python3 /usr/bin/prometheus_pusher.py' | grep -v grep | wc -l)
+
+  if [ $count != 0 ] ; then
+    echo 'prometheus_pusher is running' >&2
+  else
+    echo 'prometheus_pusher is not running' >&2
+  fi
+}
+
+case "$1" in
+    start)
+       start
+       ;;
+    stop)
+       stop
+       ;;
+    status)
+       status
+       ;;
+  restart)
+       stop
+       sleep 2
+       start
+       ;;
+    *)
+       echo "Usage: $0 {start|stop|status|restart}"
+esac
+
+exit 0

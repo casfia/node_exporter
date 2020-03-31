@@ -29,6 +29,7 @@ depends: tools
 		echo "Dependancy [golang.org/x/sys)] not exist,downloading..." \
 		cd $(DEPENDCY_SYS) && git clone https://github.com/golang/sys.git; \
 	fi
+	apt install -y python3
 
 build: depends
     ifeq ($(WITH_LIBVIRT), 1)
@@ -43,8 +44,12 @@ dpkg: build
 	mkdir -p ${DEBPATH}/usr/bin ${DEBPATH}/usr/local/prometheus
 	sed -i 's/%VERSION%/${VERSION}/' ${DEBPATH}/DEBIAN/control
 	cp node_exporter ${DEBPATH}/usr/bin/
-	chmod +x scripts/node_exporter.service scripts/node_exporter.logrotate
+	chmod +x prometheus_pusher.py
+	cp prometheus_pusher.py ${DEBPATH}/usr/bin/
+	cp config.ini ${DEBPATH}/etc/prometheus/
+	chmod +x scripts/node_exporter.service scripts/node_exporter.logrotate scripts/prometheus_pusher.service
 	cp scripts/node_exporter.service ${DEBPATH}/etc/init.d/node_exporter
+	cp scripts/prometheus_pusher.service ${DEBPATH}/etc/init.d/prometheus_pusher
 	cp scripts/node_exporter.logrotate ${DEBPATH}/etc/logrotate.d/node_exporter
 
 	cp ${DEBPATH}/DEBIAN/copyright ${DEBPATH}/usr/share/doc/prometheus/

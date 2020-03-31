@@ -19,7 +19,7 @@ program = ''
 #初始化日志处理部分
 logger = logging.getLogger(__name__)
 logger.setLevel(level = logging.INFO)
-handler = logging.FileHandler("/var/log/monior_push.log")
+handler = logging.FileHandler("/var/log/prometheus_pusher.log")
 handler.setLevel(logging.INFO)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 handler.setFormatter(formatter)
@@ -74,8 +74,4 @@ if __name__ == '__main__':
     if device_ip is '':
         print('no ip found')
         sys.exit(1)
-    pid=os.fork()
-    if pid != 0:
-        os._exit(0)
-    else:
-        main("",int(period))
+    main("",int(period))
