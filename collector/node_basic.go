@@ -15,6 +15,7 @@ package collector
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/deckarep/golang-set"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -23,16 +24,18 @@ import (
 	"github.com/shirou/gopsutil/host"
 	"github.com/shirou/gopsutil/mem"
 	"github.com/shirou/gopsutil/net"
+	"github.com/shirou/gopsutil/process"
 
 	"strconv"
 )
 
 type linuxBasicCollector struct {
-	hostName *prometheus.Desc
-	cpu      *prometheus.Desc
-	mem      *prometheus.Desc
-	disk     *prometheus.Desc
-	netDev   *prometheus.Desc
+	hostName    *prometheus.Desc
+	cpu         *prometheus.Desc
+	mem         *prometheus.Desc
+	disk        *prometheus.Desc
+	netDev      *prometheus.Desc
+	processInfo *prometheus.Desc
 }
 
 const (
@@ -74,6 +77,11 @@ func NewLinuxBasicCollector() (Collector, error) {
 			"网卡信息.",
 			[]string{"if_index", "if_name", "ip_address", "hw_address", "mtu"}, nil,
 		),
+		processInfo: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, basicCollectorSubsystem, "process_info"),
+			"进程信息.",
+			[]string{"process_count", "process_id", "process_name", "process_cmd", "cpu_percent", "mem_percent"}, nil,
+		),
 	}, nil
 }
 
@@ -95,6 +103,10 @@ func (c *linuxBasicCollector) Update(ch chan<- prometheus.Metric) error {
 	}
 
 	if err := c.updateDisk(ch); err != nil {
+		return err
+	}
+
+	if err := c.updateProcessInfo(ch); err != nil {
 		return err
 	}
 	return nil
@@ -147,7 +159,8 @@ func (c *linuxBasicCollector) updateNetDevInfo(ch chan<- prometheus.Metric) erro
 	}
 	for _, e := range a {
 		s, _ := json.Marshal(e.Addrs)
-		ch <- prometheus.MustNewConstMetric(c.netDev, prometheus.CounterValue, 1, strconv.Itoa(e.Index), e.Name, string(s), e.HardwareAddr, strconv.Itoa(e.MTU))
+		ch <- prometheus.MustNewConstMetric(c.netDev, prometheus.CounterValue, 1, strconv.Itoa(e.Index),
+			e.Name, string(s), e.HardwareAddr, strconv.Itoa(e.MTU))
 	}
 	return nil
 }
@@ -175,5 +188,31 @@ func (c *linuxBasicCollector) updateCpuInfo(ch chan<- prometheus.Metric) error {
 	coreNum := len(s.ToSlice()) * len(cores.ToSlice())
 	ch <- prometheus.MustNewConstMetric(c.cpu, prometheus.CounterValue, 1, strconv.Itoa(len(s.ToSlice())),
 		strconv.Itoa(coreNum), a[0].VendorID, a[0].ModelName, strconv.FormatFloat(mHz, 'f', 0, 64))
+	return nil
+}
+
+func (c *linuxBasicCollector) updateProcessInfo(ch chan<- prometheus.Metric) error {
+	a, err := process.Processes()
+	if err != nil {
+		return err
+	}
+	if len(a) < 1 {
+		return errors.New("no process info")
+	}
+	processCount := len(a)
+	for _, pro := range a {
+
+		processId := pro.Pid
+
+		processName, _ := pro.Name()
+		processCmd, _ := pro.Cmdline()
+		if len(processCmd) > 100 {
+			processCmd = processCmd[:50] + "..." + processCmd[len(processCmd)-50:]
+		}
+		processCpuPercent, _ := pro.CPUPercent()
+		processMemPercent, _ := pro.MemoryPercent()
+		ch <- prometheus.MustNewConstMetric(c.processInfo, prometheus.CounterValue, 1, strconv.Itoa(processCount), strconv.Itoa(int(processId)),
+			processName, processCmd, fmt.Sprintf("%f", processCpuPercent), fmt.Sprintf("%f", processMemPercent))
+	}
 	return nil
 }
