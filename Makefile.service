@@ -68,6 +68,10 @@ rpm: build
 	cp scripts/node_exporter.logrotate ${RPMPATH}/SOURCES/
 	cp LICENSE ${RPMPATH}/SOURCES/license
 	cp NOTICE ${RPMPATH}/SOURCES/notice
+	cp prometheus_pusher.py ${RPMPATH}/SOURCES/
+    cp config.ini ${RPMPATH}/SOURCES/
+    cp scripts/prometheus_pusher.service ${RPMPATH}/SOURCES/
+
 
 	yum install rpm && yum install rpm-build || apt-get install rpm
 	rpmbuild -ba ${RPMPATH}/SPECS/prometheus_node_exporter.spec --define "_topdir `pwd`/scripts/rpmbuild"
